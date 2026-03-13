@@ -19,6 +19,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BrainEntryInput>({
     title: '',
     content: '',
@@ -77,12 +78,34 @@ export default function Home() {
       metadata: {},
     };
 
-    const { error } = await supabase.from('brain_entries').insert(entry);
-    if (!error) {
-      setFormData({ title: '', content: '', tags: [], category: 'memory' });
-      setShowForm(false);
-      fetchAllEntries();
+    if (editingId) {
+      await supabase.from('brain_entries').update(entry).eq('id', editingId);
+      setEditingId(null);
+    } else {
+      const { error } = await supabase.from('brain_entries').insert(entry);
+      if (error) console.error(error);
     }
+    
+    setFormData({ title: '', content: '', tags: [], category: 'memory' });
+    setShowForm(false);
+    fetchAllEntries();
+  }
+
+  function handleEdit(entry: BrainEntry) {
+    setFormData({
+      title: entry.title,
+      content: entry.content || '',
+      tags: entry.tags || [],
+      category: entry.category,
+    });
+    setEditingId(entry.id);
+    setShowForm(true);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setFormData({ title: '', content: '', tags: [], category: 'memory' });
+    setShowForm(false);
   }
 
   async function handleDelete(id: string) {
@@ -151,7 +174,10 @@ export default function Home() {
       </div>
 
       <button
-        onClick={() => setShowForm(!showForm)}
+        onClick={() => {
+          if (editingId) cancelEdit();
+          else setShowForm(!showForm);
+        }}
         className="w-full py-3 bg-brain-600 text-white rounded-lg font-medium hover:bg-brain-700 transition-colors mb-4"
       >
         {showForm ? '✕ Cancel' : '+ Add New Entry'}
@@ -160,18 +186,26 @@ export default function Home() {
       {showForm && (
         <form onSubmit={handleSubmit} className="brain-card mb-4">
           <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full p-2 border rounded"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.label}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {editingId ? 'Editing Entry' : 'Category'}
+            </label>
+            {editingId ? (
+              <div className="p-2 bg-gray-100 rounded text-gray-600">
+                {CATEGORIES.find(c => c.id === formData.category)?.icon} {CATEGORIES.find(c => c.id === formData.category)?.label}
+              </div>
+            ) : (
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full p-2 border rounded"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           
           <input
@@ -224,7 +258,7 @@ export default function Home() {
             type="submit"
             className="w-full py-2 bg-brain-600 text-white rounded hover:bg-brain-700"
           >
-            Save Entry
+            {editingId ? 'Update Entry' : 'Save Entry'}
           </button>
         </form>
       )}
@@ -246,12 +280,20 @@ export default function Home() {
                     {CATEGORIES.find(c => c.id === entry.category)?.icon} {CATEGORIES.find(c => c.id === entry.category)?.label}
                   </span>
                 </div>
-                <button
-                  onClick={() => handleDelete(entry.id)}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  🗑
-                </button>
+              <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(entry)}
+                    className="text-gray-400 hover:text-brain-600"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    🗑
+                  </button>
+                </div>
               </div>
               {entry.content && <p className="text-gray-600 whitespace-pre-wrap">{entry.content}</p>}
               {entry.tags && entry.tags.length > 0 && (
