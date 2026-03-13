@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { supabase, BrainEntry, BrainEntryInput } from '@/lib/supabase';
 
 const CATEGORIES = [
-  { id: 'memory', label: 'Knowledge Base', icon: '🧠' },
-  { id: 'relationship', label: 'Contacts', icon: '👥' },
+  { id: 'memory', label: 'Knowledge', icon: '🧠' },
+  { id: 'relationship', label: 'People', icon: '👥' },
   { id: 'project', label: 'Projects', icon: '📋' },
   { id: 'goal', label: 'Goals', icon: '🎯' },
+  { id: 'idea', label: 'Ideas', icon: '💡' },
+  { id: 'resource', label: 'Resources', icon: '📚' },
 ];
 
 export default function Home() {
