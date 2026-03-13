@@ -45,7 +45,7 @@ export default function Home() {
     const entry: BrainEntryInput = {
       category: selectedCategory,
       title: formData.title,
-      content: formData.content || null,
+      content: formData.content || undefined,
       tags: formData.tags,
       metadata: {},
     };
