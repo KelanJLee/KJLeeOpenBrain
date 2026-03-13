@@ -5,6 +5,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+  
   const { data, error } = await supabase
     .from('brain_entries')
     .select('*')
@@ -22,6 +26,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+  
   const body = await request.json();
   const { title, content, metadata, tags, category } = body;
 
@@ -53,6 +61,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+  
   const { error } = await supabase
     .from('brain_entries')
     .delete()
