@@ -21,19 +21,12 @@ export default function Home() {
     tags: [],
   });
   const [tagInput, setTagInput] = useState('');
-  const [configError, setConfigError] = useState(false);
 
   useEffect(() => {
-    if (!supabase) {
-      setConfigError(true);
-      setIsLoading(false);
-      return;
-    }
     fetchEntries();
   }, [selectedCategory]);
 
   async function fetchEntries() {
-    if (!supabase) return;
     setIsLoading(true);
     const { data, error } = await supabase
       .from('brain_entries')
@@ -49,7 +42,6 @@ export default function Home() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) return;
     const entry: BrainEntryInput = {
       category: selectedCategory,
       title: formData.title,
@@ -67,7 +59,6 @@ export default function Home() {
   }
 
   async function handleDelete(id: string) {
-    if (!supabase) return;
     await supabase.from('brain_entries').delete().eq('id', id);
     fetchEntries();
   }
@@ -87,22 +78,6 @@ export default function Home() {
       ...formData,
       tags: formData.tags?.filter((t) => t !== tag),
     });
-  }
-
-  if (configError) {
-    return (
-      <main className="max-w-4xl mx-auto p-4">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Open Brain 🧠</h1>
-        </header>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-yellow-800">Configuration Required</h2>
-          <p className="text-yellow-700 mt-2">
-            Please add your Supabase credentials in Vercel environment variables and redeploy.
-          </p>
-        </div>
-      </main>
-    );
   }
 
   return (
