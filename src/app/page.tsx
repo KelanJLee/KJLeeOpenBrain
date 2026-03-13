@@ -1,0 +1,213 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase, BrainEntry, BrainEntryInput } from '@/lib/supabase';
+
+const CATEGORIES = [
+  { id: 'memory', label: 'Knowledge Base', icon: '🧠' },
+  { id: 'relationship', label: 'Contacts', icon: '👥' },
+  { id: 'project', label: 'Projects', icon: '📋' },
+  { id: 'goal', label: 'Goals', icon: '🎯' },
+];
+
+export default function Home() {
+  const [entries, setEntries] = useState<BrainEntry[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('memory');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState<BrainEntryInput>({
+    title: '',
+    content: '',
+    tags: [],
+  });
+  const [tagInput, setTagInput] = useState('');
+
+  useEffect(() => {
+    fetchEntries();
+  }, [selectedCategory]);
+
+  async function fetchEntries() {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('brain_entries')
+      .select('*')
+      .eq('category', selectedCategory)
+      .order('updated_at', { ascending: false });
+
+    if (!error && data) {
+      setEntries(data);
+    }
+    setIsLoading(false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const entry: BrainEntryInput = {
+      category: selectedCategory,
+      title: formData.title,
+      content: formData.content || null,
+      tags: formData.tags,
+      metadata: {},
+    };
+
+    const { error } = await supabase.from('brain_entries').insert(entry);
+    if (!error) {
+      setFormData({ title: '', content: '', tags: [] });
+      setShowForm(false);
+      fetchEntries();
+    }
+  }
+
+  async function handleDelete(id: string) {
+    await supabase.from('brain_entries').delete().eq('id', id);
+    fetchEntries();
+  }
+
+  function addTag() {
+    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+      setFormData({
+        ...formData,
+        tags: [...(formData.tags || []), tagInput.trim()],
+      });
+      setTagInput('');
+    }
+  }
+
+  function removeTag(tag: string) {
+    setFormData({
+      ...formData,
+      tags: formData.tags?.filter((t) => t !== tag),
+    });
+  }
+
+  return (
+    <main className="max-w-4xl mx-auto p-4">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Open Brain 🧠</h1>
+        <p className="text-gray-600 mt-1">Your agent-readable knowledge base</p>
+      </header>
+
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+              selectedCategory === cat.id
+                ? 'bg-brain-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border'
+            }`}
+          >
+            {cat.icon} {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setShowForm(!showForm)}
+        className="w-full py-3 bg-brain-600 text-white rounded-lg font-medium hover:bg-brain-700 transition-colors mb-6"
+      >
+        {showForm ? '✕ Cancel' : '+ Add New Entry'}
+      </button>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="brain-card mb-6">
+          <input
+            type="text"
+            placeholder="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="w-full p-2 border rounded mb-3 text-lg font-medium"
+            required
+          />
+          <textarea
+            placeholder="Content..."
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            className="w-full p-2 border rounded mb-3 min-h-[100px]"
+          />
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="Add tag"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+              className="flex-1 p-2 border rounded"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Add
+            </button>
+          </div>
+          {formData.tags && formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {formData.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="brain-tag flex items-center gap-1"
+                >
+                  {tag}
+                  <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500">
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <button
+            type="submit"
+            className="w-full py-2 bg-brain-600 text-white rounded hover:bg-brain-700"
+          >
+            Save Entry
+          </button>
+        </form>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-500">Loading...</div>
+      ) : entries.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No entries yet. Add your first one above!
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {entries.map((entry) => (
+            <div key={entry.id} className="brain-card">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-gray-900">{entry.title}</h3>
+                <button
+                  onClick={() => handleDelete(entry.id)}
+                  className="text-gray-400 hover:text-red-500"
+                >
+                  🗑
+                </button>
+              </div>
+              {entry.content && <p className="text-gray-600 whitespace-pre-wrap">{entry.content}</p>}
+              {entry.tags && entry.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {entry.tags.map((tag) => (
+                    <span key={tag} className="brain-tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">
+                Updated: {new Date(entry.updated_at).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <footer className="mt-12 p-4 bg-gray-100 rounded-lg text-sm text-gray-600">
+        <h4 className="font-semibold mb-2">🤖 AI Agent Access</h4>
+        <p>Your brain is accessible via API. See <code>/api/brain</code> endpoint.</p>
+      </footer>
+    </main>
+  );
+}
